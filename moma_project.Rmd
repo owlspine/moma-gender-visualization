@@ -1,0 +1,124 @@
+---
+title: "Gender and Classification Trends in MoMA Artworks"
+author: "Alejandra Chavarria"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: '3'
+    df_print: paged
+    number_sections: true
+    theme: united
+    code_folding: none
+  word_document:
+    toc: true
+    toc_depth: '3'
+---
+
+```{r load-packages, include=FALSE}
+library(tidyverse)
+library(stringr)
+```
+# Introduction
+
+The Museum of Modern Art (MoMA) collection contains a wide array of artworks throughout history. Our group explored how gender is represented in the MoMA collection, with a focus on how classifications (such as painting, sculpture, etc.) vary by artist gender. Our research question is as follows: Is there a correlation between an artist’s gender and the types of media or themes they work in, as represented in the collection between 1841- 1928? 
+
+Previous studies and critiques have pointed to a lack of representation of women and non-binary artists in museum collections. By examining the MoMA dataset, this project aims to outline and see the disparity and explore whether certain classifications are more inclusive than others.
+
+The primary objective of this study is to examine the relationship between artist gender and the type of artwork classifications represented in the MoMA collection. This topic is important because it illustrates just how prevalent artwork is and how influential museums like MoMA are in picking artists. What we display to the public can shape societal norms, especially around gender.
+
+We feel as if anyone within the art world should care about these results, especially artists and those who work with the art. The more people who understand the gendered patterns and issues within the industry, the more we can create change to combat against the inequalities and create more inclusive practices for all. 
+
+# Data and Methods
+
+We used the open MoMA dataset, specifically `Artworks copy.csv`, which contains 137,000+ artwork records. The dataset includes variables such as `Title`, `Classification`, `Date`, `Artist`, and `Gender`. We focused on analyzing `Gender` and `Classification` to examine whether representation differs by type of artwork. Our group further sampled 200 across the first 50 years of data ranging from 1841-1928.
+
+The data was accessed via [MoMA’s GitHub archive](https://github.com/MuseumofModernArt/collection).
+
+To analyze gender representation across artwork types, we grouped the dataset by `Gender` and `Classification` using `dplyr`. We then calculated the number of artworks in each category and used `ggplot2` to create bar plots that compare classification frequency across genders. These descriptive and visual methods were chosen to clearly display proportional differences in representation across categories, making trends and disparities easier to interpret.
+
+Below is the code used to import and prepare the data:
+
+```{r import-data, message=FALSE, warning=FALSE}
+artworks <- read_csv("Artworks copy.csv") %>%
+  filter(!is.na(Gender)) %>%
+  mutate(
+    Gender = as.factor(Gender),
+    Classification = as.factor(Classification)
+  )
+```
+```{r prepare-sample, message=FALSE, warning=FALSE}
+Momaart_df <- read_csv("Artworks copy.csv")
+Momaartist_df <- read_csv("Artists copy.csv")
+
+moma <- left_join(Momaart_df, Momaartist_df, by = c("Artist" = "DisplayName"))
+
+moma_years <- moma %>%
+  mutate(Year = as.numeric(str_extract(Date, "[0-9]{4}"))) %>%
+  filter(!is.na(Year))
+
+moma_early <- moma_years %>%
+  filter(
+    Year >= 1841, Year <= 1928,
+    !is.na(Gender.y),
+    !is.na(Classification),
+    str_to_lower(Gender.y) %in% c("male", "female")
+  ) %>%
+  slice_sample(n = 200)
+```
+  
+# Results
+
+This section presents the summarized data and visualizations of how artwork classifications differ by gender. We begin with a summary table of counts by `Gender` and `Classification`, followed by a bar graph that shows these differences visually.
+```{r summary-table, message=FALSE, warning=FALSE}
+classification_gender <- moma_early %>%
+  rename(Gender = Gender.y) %>%
+  count(Gender, Classification, sort = TRUE)
+
+knitr::kable(head(classification_gender, 10))
+```
+
+The table above shows the top 10 most frequent artwork classifications by gender in our 200-row sample. Male artists dominate most categories, especially traditional forms such as print and drawing.
+```{r classification-bar, message=FALSE, warning=FALSE}
+classification_gender <- moma_early %>%
+  rename(Gender = Gender.y) %>%
+  count(Gender, Classification, sort = TRUE)
+
+ggplot(classification_gender, aes(x = reorder(Classification, n), y = n, fill = Gender)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  coord_flip() +
+  labs(
+    title = "Artwork Classification by Gender (Sample of 200: 1841–1928)",
+    x = "Classification",
+    y = "Number of Works"
+  ) +
+  theme_minimal()
+```
+
+This bar chart visualizes how artwork classification frequencies differ between male and female artists. While both genders are represented across multiple categories, male artists are over represented in nearly all of them.
+```{r gender-line, message=FALSE, warning=FALSE}
+gender_by_year <- moma_early %>%
+  count(Year, Gender.y)
+
+ggplot(gender_by_year, aes(x = Year, y = n, color = Gender.y)) +
+  geom_line(linewidth = 1.2) +
+  labs(
+    title = "Artworks Collected by Gender Over Time (1841–1928)",
+    x = "Year",
+    y = "Number of Works",
+    color = "Gender"
+  ) +
+  theme_minimal()
+```
+
+This line graph shows that over time, male artists were consistently more represented in MoMA’s collection between 1841 and 1928. The number of female artist acquisitions remained significantly lower, with minimal growth.
+
+# Discussion
+
+Overall, there is a clear correlation between artist gender and the types of art they created, and how often those works were collected. Our analysis of the MoMA dataset highlights the persistent gender disparities in how artworks are represented and classified within major art collections.
+
+Male artists were dominant across most mediums, especially in painting and sculpture, while female artists were more often present in areas like textiles and prints, which were historically seen as less prestigious. Although both male and female artists appeared across a variety of media types, male artists consistently dominated nearly every classification; even when examining a small sample of 200 works from 1841–1928. The time trend also revealed that, although women’s representation slightly increased toward the later years in the sample, it never approached parity with men.
+
+These findings reinforce longstanding critiques about the historical underrepresentation of women in institutional art spaces. This reflects not only limited opportunities for women artists, but also a biased idea of what counted as “serious” or collectible art during this time period.
+
+Our graphs suggest that this disparity wasn’t just about the number of artworks — it affected which artists were seen as important, and whose work was remembered and displayed in museums. It’s a strong reminder that gender has played a significant role in shaping the art world, and that these patterns still matter today. These trends deserve attention. For museum professionals, educators, and artists, this kind of analysis can inform more equitable practices, from acquisitions to exhibitions, that promote broader gender representation in the cultural record.
